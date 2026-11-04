@@ -10,6 +10,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { createMascot } from './mascot.js';
 import { Island } from './island.js';
 import { APPS, initPanel, openPanel, closePanel } from './panels.js';
+import { initInteraction } from './interaction.js';
 
 /* ============================================================
    基础环境
@@ -416,6 +417,10 @@ initPanel(() => {
   island.notify('面板已关闭', '✕', 1500);
 });
 
+fish.start();
+
+const interaction = initInteraction({ island, fish, camera, renderer });
+
 /* ============================================================
    交互：射线拾取
    ============================================================ */
@@ -458,10 +463,11 @@ dom.addEventListener('pointerup', (e) => {
   if (rec.type === 'tile') {
     const app = rec.ref.userData.app;
     openPanel(app);
+    interaction.onAppOpen(app);
     island.notify(`已打开「${app.label}」`, app.icon, 2200);
     island.setSub(`正在运行 · ${app.label}`);
   } else if (rec.type === 'fish') {
-    fish.react();
+    interaction.onPoke();
     island.notify('大肥鱼开心地转了个圈 💙', '🐳', 2400);
     island.setSub('大肥鱼正在撒娇');
   }
@@ -601,7 +607,7 @@ function animate() {
     if (hudFps) hudFps.textContent = Math.round(fps);
     island.setStats({
       fps,
-      objects: tiles.length + 1,
+      objects: Math.round(fish.state.tokens),
       distance: camera.position.distanceTo(controls.target),
     });
     if (coordEl) {
@@ -614,6 +620,7 @@ function animate() {
   }
 
   island.tick();
+  interaction.update(dt);
 }
 
 /* ============================================================
@@ -643,16 +650,24 @@ setTimeout(() => {
 }, 900);
 
 // 演示模式：?demo=1 自动展开音乐面板与灵动岛，便于截图与验收
-if (new URLSearchParams(location.search).get('demo') === '1') {
+const demoMode = new URLSearchParams(location.search).get('demo');
+if (demoMode) {
   setTimeout(() => {
     // 截图环境里 CSS 过渡不会随虚拟时间推进，先禁用过渡直达终态
     const skip = document.createElement('style');
     skip.textContent = '*{transition:none !important;animation:none !important}';
     document.head.appendChild(skip);
-    const app = APPS.find((a) => a.id === 'music') || APPS[0];
-    openPanel(app);
-    island.setSub(`正在运行 · ${app.label}`);
-    island.open();
+
+    if (demoMode === '1') {
+      const app = APPS.find((a) => a.id === 'music') || APPS[0];
+      openPanel(app);
+      interaction.onAppOpen(app);
+      island.setSub('正在运行 · ' + app.label);
+      island.open();
+    } else {
+      fish.play('dance');
+    }
+    interaction.say('主人～人家已经准备好啦，今天想做什么呀？', 600000);
   }, 1200);
 }
 

@@ -1,21 +1,27 @@
 import * as THREE from 'three';
 
 /**
- * 蓝色大肥鱼（DeepSeek 鲸鱼娘）
+ * 蓝色大肥鱼（DeepSeek 鲸鱼娘）—— 动画角色
  *
- * 采用社区桌宠项目 1190fasheqi/dafeiyu-pet 的成品三视图立绘（MIT 协议），
- * 通过「广告牌 + 三视图交叉淡入」实现伪 3D 转身：
- * 相机绕着她转动时，正面 / 侧面 / 背面三张立绘按方位角权重平滑混合，
- * 观感上就像角色在跟着你转头。
+ * 素材来自社区项目 MerZlin/dsh-pet-indesktop（MIT），其动画源为 PC2005-cloud/dsh-pet。
+ * 采用带 Alpha 通道的 WebM（VP9）作为 VideoTexture，贴在始终面向相机的平面上，
+ * 通过双槽交叉淡化实现动作切换，避免切镜头时的黑闪。
  */
 
-const VIEWS = [
-  { key: 'front', url: '/sprites/front.png', aspect: 255 / 340 },
-  { key: 'side', url: '/sprites/side.png', aspect: 222 / 340 },
-  { key: 'back', url: '/sprites/back.png', aspect: 253 / 340 },
-];
+const CLIPS = {
+  idle: '/clips/idle.webm',
+  wave: '/clips/wave.webm',
+  happy: '/clips/happy.webm',
+  shy: '/clips/shy.webm',
+  angry: '/clips/angry.webm',
+  eat: '/clips/eat.webm',
+  dance: '/clips/dance.webm',
+  code: '/clips/code.webm',
+};
 
-const CHAR_HEIGHT = 3.35;
+const ONE_SHOT = new Set(['wave', 'happy', 'shy', 'angry', 'eat', 'dance', 'code']);
+
+const CHAR_HEIGHT = 3.95;
 const FEET_Y = 0.05;
 
 export function createMascot(scene, camera) {
@@ -23,14 +29,22 @@ export function createMascot(scene, camera) {
   root.position.set(0, 0, -1.4);
   scene.add(root);
 
-  const loader = new THREE.TextureLoader();
+  /* ---------- 两个播放槽 ---------- */
+  function makeSlot() {
+    const video = document.createElement('video');
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = 'auto';
+    video.loop = false;
+    video.style.cssText =
+      'position:fixed;left:-9999px;top:0;width:2px;height:2px;opacity:0;pointer-events:none';
+    document.body.appendChild(video);
 
-  /* ---------- 三视图平面 ---------- */
-  const layers = VIEWS.map((v) => {
-    const tex = loader.load(v.url);
+    const tex = new THREE.VideoTexture(video);
     tex.colorSpace = THREE.SRGBColorSpace;
-    tex.anisotropy = 8;
-    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.minFilter = THREE.LinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    tex.generateMipmaps = false;
 
     const mat = new THREE.MeshBasicMaterial({
       map: tex,
@@ -41,39 +55,94 @@ export function createMascot(scene, camera) {
       side: THREE.DoubleSide,
     });
 
-    const w = CHAR_HEIGHT * v.aspect;
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, CHAR_HEIGHT), mat);
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
     mesh.position.y = FEET_Y + CHAR_HEIGHT / 2;
-    mesh.renderOrder = 10;
+    mesh.renderOrder = 20;
+    mesh.scale.set(CHAR_HEIGHT * 0.75, CHAR_HEIGHT, 1);
     root.add(mesh);
 
-    return { mesh, mat, key: v.key, aspect: v.aspect };
+    return { video, tex, mat, mesh, opacity: 0, target: 0, name: null, ready: false };
+  }
+
+  const slots = [makeSlot(), makeSlot()];
+  let active = 0;
+  let currentName = null;
+
+  function sizeSlot(slot) {
+    const v = slot.video;
+    if (!v.videoWidth || !v.videoHeight) return;
+    const aspect = v.videoWidth / v.videoHeight;
+    slot.mesh.scale.set(CHAR_HEIGHT * aspect, CHAR_HEIGHT, 1);
+    slot.mesh.position.y = FEET_Y + CHAR_HEIGHT / 2;
+  }
+
+  slots.forEach((slot) => {
+    slot.video.addEventListener('loadedmetadata', () => {
+      sizeSlot(slot);
+      slot.ready = true;
+    });
+    slot.video.addEventListener('ended', () => {
+      if (ONE_SHOT.has(slot.name) && slot === slots[active]) {
+        play('idle', true);
+      }
+    });
   });
 
-  // 正面默认可见，避免首帧空白
-  layers[0].mat.opacity = 1;
+  /* 预加载全部片段，避免切换时卡顿 */
+  Object.entries(CLIPS).forEach(([name, url]) => {
+    const v = document.createElement('video');
+    v.src = url;
+    v.preload = 'auto';
+    v.muted = true;
+    v.style.display = 'none';
+    document.body.appendChild(v);
+  });
+
+  function play(name, force = false) {
+    if (!CLIPS[name]) return;
+    if (!force && currentName === name) return;
+
+    const from = slots[active];
+    const nextIndex = active === 0 ? 1 : 0;
+    const to = slots[nextIndex];
+
+    to.name = name;
+    to.video.loop = name === 'idle';
+    if (to.video.src.indexOf(CLIPS[name]) === -1) {
+      to.video.src = CLIPS[name];
+    }
+    to.video.currentTime = 0;
+    const p = to.video.play();
+    if (p && p.catch) p.catch(() => {});
+
+    to.target = 1;
+    from.target = 0;
+
+    active = nextIndex;
+    currentName = name;
+  }
 
   /* ---------- 地面投影 ---------- */
   const shadowCanvas = document.createElement('canvas');
   shadowCanvas.width = shadowCanvas.height = 256;
   const sctx = shadowCanvas.getContext('2d');
   const sgrad = sctx.createRadialGradient(128, 128, 4, 128, 128, 128);
-  sgrad.addColorStop(0, 'rgba(0,0,0,0.55)');
-  sgrad.addColorStop(0.55, 'rgba(0,0,0,0.22)');
+  sgrad.addColorStop(0, 'rgba(0,0,0,0.5)');
+  sgrad.addColorStop(0.55, 'rgba(0,0,0,0.2)');
   sgrad.addColorStop(1, 'rgba(0,0,0,0)');
   sctx.fillStyle = sgrad;
   sctx.fillRect(0, 0, 256, 256);
   const shadowTex = new THREE.CanvasTexture(shadowCanvas);
 
   const shadow = new THREE.Mesh(
-    new THREE.PlaneGeometry(2.6, 1.5),
+    new THREE.PlaneGeometry(2.4, 1.4),
     new THREE.MeshBasicMaterial({
-      map: shadowTex, transparent: true, opacity: 0.85,
+      map: shadowTex, transparent: true, opacity: 0.8,
       depthWrite: false, toneMapped: false,
     })
   );
   shadow.rotation.x = -Math.PI / 2;
-  shadow.position.set(0, 0.02, 0);
+  shadow.position.set(0, 0.015, 0);
   root.add(shadow);
 
   /* ---------- 柔光 ---------- */
@@ -81,8 +150,8 @@ export function createMascot(scene, camera) {
   glowCanvas.width = glowCanvas.height = 256;
   const gctx = glowCanvas.getContext('2d');
   const ggrad = gctx.createRadialGradient(128, 128, 0, 128, 128, 128);
-  ggrad.addColorStop(0, 'rgba(110,160,255,0.45)');
-  ggrad.addColorStop(0.5, 'rgba(70,120,230,0.13)');
+  ggrad.addColorStop(0, 'rgba(110,160,255,0.4)');
+  ggrad.addColorStop(0.5, 'rgba(70,120,230,0.12)');
   ggrad.addColorStop(1, 'rgba(50,100,220,0)');
   gctx.fillStyle = ggrad;
   gctx.fillRect(0, 0, 256, 256);
@@ -90,13 +159,13 @@ export function createMascot(scene, camera) {
   glowTex.colorSpace = THREE.SRGBColorSpace;
 
   const glow = new THREE.Mesh(
-    new THREE.PlaneGeometry(5.0, 5.6),
+    new THREE.PlaneGeometry(5.2, 5.8),
     new THREE.MeshBasicMaterial({
-      map: glowTex, transparent: true, opacity: 0.6,
+      map: glowTex, transparent: true, opacity: 0.55,
       blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false,
     })
   );
-  glow.position.set(0, FEET_Y + CHAR_HEIGHT * 0.45, -0.35);
+  glow.position.set(0, FEET_Y + CHAR_HEIGHT * 0.45, -0.4);
   root.add(glow);
 
   /* ---------- 爱心 ---------- */
@@ -129,55 +198,28 @@ export function createMascot(scene, camera) {
   }
 
   /* ---------- 状态 ---------- */
-  const state = { baseY: 0, jump: 0, pointerX: 0, pointerY: 0 };
+  const state = { baseY: 0, jump: 0, tokens: 62, affection: 40 };
 
-  const camDir = new THREE.Vector3();
-  const tmp = new THREE.Vector3();
+  const headWorld = new THREE.Vector3();
 
   function update(t, dt) {
-    // 相机相对角色的方位角：0 = 正面，±90° = 侧面，180° = 背面
-    camDir.subVectors(camera.position, root.position);
-    const a = Math.atan2(camDir.x, camDir.z);
-    const t01 = Math.min(1, Math.abs(a) / Math.PI);
-
-    // 三角形权重：任意时刻最多两层非零，等价于两图交叉淡化
-    let wFront = 0, wSide = 0, wBack = 0;
-    if (t01 <= 0.5) {
-      const k = t01 / 0.5;
-      wFront = 1 - k;
-      wSide = k;
-    } else {
-      const k = (t01 - 0.5) / 0.5;
-      wSide = 1 - k;
-      wBack = k;
+    // 交叉淡化
+    for (const s of slots) {
+      const speed = 6.5 * dt;
+      s.opacity += (s.target - s.opacity) * Math.min(1, speed);
+      s.mat.opacity = s.opacity;
+      if (s.opacity < 0.02 && s.target === 0 && !s.video.paused) {
+        s.video.pause();
+      }
     }
 
-    const weights = [wFront, wSide, wBack];
-    layers.forEach((l, i) => {
-      l.mat.opacity = weights[i];
-      // 侧视图根据观察方向做镜像，保证朝向一致
-      if (l.key === 'side') {
-        l.mesh.scale.x = a < 0 ? -1 : 1;
-      }
-    });
-
-    // 呼吸浮动 + 轻微摇摆
-    const bob = Math.sin(t * 1.2) * 0.05 + Math.sin(t * 0.55) * 0.02;
-    const jump = state.jump > 0.001 ? state.jump : 0;
-    root.position.y = state.baseY + bob + jump * 0.45;
-    root.position.x = Math.sin(t * 0.4) * 0.06;
-
-    // 跳跃回落
+    // 呼吸浮动 + 跳跃
+    const bob = Math.sin(t * 1.15) * 0.045;
     if (state.jump > 0.001) state.jump *= 0.9;
+    root.position.y = state.baseY + bob + state.jump * 0.4;
+    root.position.x = Math.sin(t * 0.42) * 0.05;
 
-    // 轻微呼吸缩放
-    const breathe = 1 + Math.sin(t * 1.2) * 0.006;
-    layers.forEach((l) => {
-      l.mesh.scale.y = breathe;
-    });
-
-    // 柔光呼吸
-    glow.material.opacity = 0.5 + Math.sin(t * 1.1) * 0.08;
+    glow.material.opacity = 0.45 + Math.sin(t * 1.1) * 0.07;
 
     // 爱心
     for (const h of hearts) {
@@ -192,19 +234,30 @@ export function createMascot(scene, camera) {
     }
   }
 
-  function react() {
+  function react(kind = 'happy') {
     state.jump = 1;
-    tmp.copy(root.position);
-    tmp.y += FEET_Y + CHAR_HEIGHT * 0.75;
-    tmp.z += 0.3;
-    emitHearts(tmp, 8);
+    play(kind);
+    headWorld.copy(root.position);
+    headWorld.y += FEET_Y + CHAR_HEIGHT * 0.8;
+    headWorld.z += 0.4;
+    emitHearts(headWorld, 8);
+  }
+
+  function getHeadWorld() {
+    headWorld.copy(root.position);
+    headWorld.y += FEET_Y + CHAR_HEIGHT * 0.86;
+    return headWorld;
   }
 
   return {
     root,
-    update,
+    play,
     react,
+    update,
     state,
+    getHeadWorld,
+    get clip() { return currentName; },
     setBaseY(y) { state.baseY = y; root.position.y = y; },
+    start() { play('idle'); },
   };
 }
