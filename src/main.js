@@ -35,7 +35,7 @@ scene.background = new THREE.Color(0x04060b);
 scene.fog = new THREE.FogExp2(0x04060b, 0.026);
 
 const camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.1, 220);
-camera.position.set(0, 2.62, 7.7);
+camera.position.set(0, 2.55, 8.2);
 
 // 环境贴图（让玻璃与金属有可反射的内容）
 const pmrem = new THREE.PMREMGenerator(renderer);
@@ -47,7 +47,7 @@ scene.environmentIntensity = 0.38;
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.055;
-controls.target.set(0, 1.24, 0);
+controls.target.set(0, 1.35, 0);
 controls.minDistance = 3.4;
 controls.maxDistance = 20;
 controls.maxPolarAngle = Math.PI * 0.53;
@@ -355,11 +355,8 @@ buildTiles();
 /* ============================================================
    大肥鱼
    ============================================================ */
-const fish = createMascot(scene);
-fish.root.position.set(0, 1.0, -0.55);
-fish.setBaseY(1.0);
-fish.root.scale.setScalar(1.15);
-fish.root.rotation.y = -0.58;
+const fish = createMascot(scene, camera);
+fish.setBaseY(0.02);
 scene.add(fish.root);
 
 fish.root.traverse((o) => {
@@ -370,7 +367,7 @@ fish.root.traverse((o) => {
 
 // 鱼身后的光环
 const fishRing = new THREE.Mesh(
-  new THREE.TorusGeometry(1.72, 0.012, 8, 160),
+  new THREE.TorusGeometry(1.95, 0.012, 8, 160),
   new THREE.MeshBasicMaterial({
     color: 0xf472b6,
     transparent: true,
@@ -379,11 +376,11 @@ const fishRing = new THREE.Mesh(
     depthWrite: false,
   })
 );
-fishRing.position.set(0, 2.0, -1.5);
+fishRing.position.set(0, 1.72, -2.3);
 scene.add(fishRing);
 
 const fishRing2 = new THREE.Mesh(
-  new THREE.TorusGeometry(2.2, 0.008, 8, 160),
+  new THREE.TorusGeometry(2.45, 0.008, 8, 160),
   new THREE.MeshBasicMaterial({
     color: 0x22d3ee,
     transparent: true,
@@ -392,7 +389,7 @@ const fishRing2 = new THREE.Mesh(
     depthWrite: false,
   })
 );
-fishRing2.position.set(0, 2.0, -1.7);
+fishRing2.position.set(0, 1.72, -2.55);
 scene.add(fishRing2);
 
 /* ============================================================
