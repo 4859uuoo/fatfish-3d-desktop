@@ -658,7 +658,12 @@ if (demoMode) {
     skip.textContent = '*{transition:none !important;animation:none !important}';
     document.head.appendChild(skip);
 
-    if (demoMode === '1') {
+    if (demoMode === '3') {
+      camera.position.set(3.7, 2.45, 5.9);
+      controls.target.set(0, 1.6, -1.2);
+      controls.update();
+      fish.play('idle');
+    } else if (demoMode === '1') {
       const app = APPS.find((a) => a.id === 'music') || APPS[0];
       openPanel(app);
       interaction.onAppOpen(app);
