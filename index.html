@@ -3,92 +3,66 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>蓝色大肥鱼 · AETHER 3D DESKTOP</title>
+  <title>大肥鱼 · 海景小屋</title>
   <link rel="stylesheet" href="/src/style.css" />
 </head>
 <body>
   <div id="scene"></div>
 
-  <!-- ============ 灵动岛 ============ -->
-  <div id="island" data-state="compact" role="button" tabindex="0" aria-label="灵动岛">
-    <div class="island-face face-compact">
-      <span class="dot"></span>
-      <span id="island-clock">--:--</span>
-      <span class="fish-chip">🐳</span>
-    </div>
-
-    <div class="island-face face-notify">
-      <span class="notify-ico" id="notify-ico">✦</span>
-      <span class="notify-txt" id="notify-txt">已就绪</span>
-    </div>
-
-    <div class="island-face face-open">
-      <div class="ip-head">
-        <div>
-          <div class="ip-title">大肥鱼 · 灵动岛</div>
-          <div class="ip-sub" id="ip-sub">AETHER ONLINE</div>
-        </div>
-        <span class="ip-live"><i></i>LIVE</span>
-      </div>
-
-      <div class="ip-player">
-        <div class="ip-cover">🐳</div>
-        <div class="ip-meta">
-          <div class="ip-track">Fat Fish Dreams</div>
-          <div class="ip-artist">Neon Aquarium</div>
-          <div class="ip-bars"><i></i><i></i><i></i><i></i><i></i><i></i></div>
-        </div>
-        <button class="ip-play" id="ip-play" aria-label="播放">▶</button>
-      </div>
-
-      <div class="ip-stats">
-        <div class="ip-stat"><b id="st-fps">60</b><span>FPS</span></div>
-        <div class="ip-stat"><b id="st-obj">0</b><span>算力</span></div>
-        <div class="ip-stat"><b id="st-cam">0</b><span>视距</span></div>
-      </div>
-    </div>
+  <!-- 左上：时间与状态 -->
+  <div class="hud hud-tl">
+    <div class="clock" id="clock">09:00</div>
+    <div class="where"><span id="loc">窗边</span><i></i><span id="act">发呆</span></div>
   </div>
 
-  <!-- ============ HUD ============ -->
-  <header class="hud hud-tl">
-    <div class="brand">大肥鱼<span class="sep">/</span>AETHER</div>
-    <div class="brand-sub">3D INTERACTIVE DESKTOP</div>
-  </header>
-
-  <div class="hud hud-tr">
-    <div class="pill"><span id="hud-fps">60</span> FPS</div>
-    <div class="pill live"><i></i>ONLINE</div>
-  </div>
-
-  <footer class="hud hud-bl">
-    <div class="keys">
-      <kbd>拖拽</kbd>旋转<span class="k-sep">·</span>
-      <kbd>滚轮</kbd>缩放<span class="k-sep">·</span>
-      <kbd>WASD</kbd>漫游<span class="k-sep">·</span>
-      <kbd>R</kbd>自转<span class="k-sep">·</span>
-      <kbd>点击</kbd>打开
+  <!-- 左下：三条核心数值 -->
+  <div class="hud hud-bars">
+    <div class="bar-row">
+      <span class="bar-label">心情</span>
+      <div class="bar"><i id="bar-mood"></i></div>
+      <span class="bar-val" id="val-mood">60</span>
     </div>
-  </footer>
-
-  <div class="hud hud-br">
-    <div class="coord" id="coord">X 0.00 · Y 0.00 · Z 0.00</div>
-  </div>
-
-  <!-- ============ 应用面板 ============ -->
-  <div id="app-panel" class="app-panel" aria-hidden="true">
-    <div class="ap-head">
-      <span class="ap-ico" id="ap-ico">✦</span>
-      <span class="ap-title" id="ap-title">应用</span>
-      <button class="ap-close" id="ap-close" aria-label="关闭">✕</button>
+    <div class="bar-row">
+      <span class="bar-label">饱腹</span>
+      <div class="bar"><i id="bar-full" class="full"></i></div>
+      <span class="bar-val" id="val-full">68</span>
     </div>
-    <div class="ap-body" id="ap-body"></div>
+    <div class="bar-row">
+      <span class="bar-label">精力</span>
+      <div class="bar"><i id="bar-energy" class="energy"></i></div>
+      <span class="bar-val" id="val-energy">72</span>
+    </div>
+    <div class="solitude">独处 <span id="val-alone">0</span> 分钟</div>
   </div>
 
-  <!-- ============ 启动遮罩 ============ -->
+  <!-- 气泡 -->
+  <div id="bubble" class="bubble"></div>
+
+  <!-- 日记 -->
+  <aside id="diary" class="diary">
+    <div class="diary-head">
+      <span>📓 小鱼日记</span>
+      <button id="diary-close">✕</button>
+    </div>
+    <div class="diary-time" id="diary-time"></div>
+    <div class="diary-body">
+      <div class="diary-line"><b>心情</b><span id="diary-mood"></span></div>
+      <div class="diary-line"><b>状态</b><span id="diary-state"></span></div>
+      <p id="diary-text"></p>
+    </div>
+  </aside>
+
+  <!-- 底部操作 -->
+  <div class="dock">
+    <button id="feed" class="btn primary">🍚 投喂白饭</button>
+    <button id="talk" class="btn">💬 叫她一声</button>
+    <button id="diary-btn" class="btn">📓 日记本</button>
+  </div>
+
+  <!-- 启动遮罩 -->
   <div id="boot" class="boot">
-    <div class="boot-fish">🐳</div>
-    <div class="boot-txt">AETHER 正在唤醒蓝色大肥鱼…</div>
-    <div class="boot-bar"><i></i></div>
+    <div class="boot-fish">🐋</div>
+    <div class="boot-txt">正在推开小屋的门…</div>
   </div>
 
   <script type="module" src="/src/main.js"></script>

@@ -44,7 +44,7 @@ try {
 }
 
 // 让渲染多跑几帧
-await new Promise((r) => setTimeout(r, 1200));
+await new Promise((r) => setTimeout(r, Number(process.env.DFY_SETTLE || 1200)));
 await page.screenshot({ path: out });
 await browser.close();
 
