@@ -76,6 +76,19 @@ const rimPink = new THREE.PointLight(0xf472b6, 8.5, 20, 2);
 rimPink.position.set(4.6, 2.6, -1.5);
 scene.add(rimPink);
 
+// 角色正面补光：MToon 材质吃方向光，缺了会让脸发暗
+const charFill = new THREE.DirectionalLight(0xcfe4ff, 1.3);
+charFill.position.set(1.2, 4.2, 6.5);
+charFill.target.position.set(0, 2.0, -1.15);
+scene.add(charFill);
+scene.add(charFill.target);
+
+const charFill2 = new THREE.DirectionalLight(0x9db8ff, 0.7);
+charFill2.position.set(-3.5, 2.2, 3.5);
+charFill2.target.position.set(0, 2.0, -1.15);
+scene.add(charFill2);
+scene.add(charFill2.target);
+
 const warmUnder = new THREE.PointLight(0xff9a4a, 6, 12, 2);
 warmUnder.position.set(0, 0.6, 0);
 scene.add(warmUnder);
@@ -401,9 +414,9 @@ composer.addPass(new RenderPass(scene, camera));
 
 const bloom = new UnrealBloomPass(
   new THREE.Vector2(window.innerWidth, window.innerHeight),
-  0.42,
+  0.36,
   0.5,
-  1.0
+  1.05
 );
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
@@ -453,11 +466,24 @@ dom.addEventListener('pointerup', (e) => {
   if (moved > 6) return; // 拖拽视角，不算点击
 
   raycaster.setFromCamera(pointerNDC, camera);
-  const hits = raycaster.intersectObjects(pickables.map((p) => p.mesh), false);
+  const targets = [...pickables.map((p) => p.mesh), fish.root];
+  const hits = raycaster.intersectObjects(targets, true);
   if (!hits.length) return;
 
   const hitMesh = hits[0].object;
   const rec = pickables.find((p) => p.mesh === hitMesh);
+
+  // 命中角色（VRM 网格是异步挂上去的，直接判归属）
+  let underFish = false;
+  for (let o = hitMesh; o; o = o.parent) {
+    if (o === fish.root) { underFish = true; break; }
+  }
+
+  if (!rec && underFish) {
+    interaction.onPoke();
+    island.notify('大肥鱼被你戳到了', '🐳', 2000);
+    return;
+  }
   if (!rec) return;
 
   if (rec.type === 'tile') {
@@ -658,7 +684,11 @@ if (demoMode) {
     skip.textContent = '*{transition:none !important;animation:none !important}';
     document.head.appendChild(skip);
 
-    if (demoMode === '3') {
+    if (demoMode === '4') {
+      camera.position.set(0.35, 2.35, 1.05);
+      controls.target.set(0, 2.1, -1.4);
+      controls.update();
+    } else if (demoMode === '3') {
       camera.position.set(3.7, 2.45, 5.9);
       controls.target.set(0, 1.6, -1.2);
       controls.update();

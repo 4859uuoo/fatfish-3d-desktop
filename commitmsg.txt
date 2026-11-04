@@ -1,0 +1,10 @@
+feat: 改用真正的 3D 骨骼角色（VRM）
+
+- 接入 VRoid AvatarSample_A.vrm（VRM 0.x，54 根人形骨骼）
+- @pixiv/three-vrm 解析，修复此前 headless 下「卡在 99%」的误判
+- MToon 材质统一转为 MeshStandardMaterial，解决面部发黑
+- 骨骼驱动：呼吸、站立微摆、看向鼠标、随机眨眼、点击跳跃点头
+- 归一化骨骼把 T-pose 摆成自然垂手姿势
+- 发色/瞳色替换为鲸鱼蓝
+- 新增 tools/shot.mjs：Puppeteer 等待加载完成再截图
+- 移除 2D 立绘与充气几何体方案

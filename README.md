@@ -1,28 +1,34 @@
 # 蓝色大肥鱼 · AETHER 3D DESKTOP
 
 一个跑在浏览器里的 **3D 交互式桌面**：星空、金属地面、霓虹应用坞、会呼吸的 **灵动岛**，
-以及站在场景中央、**有真实体积**的 **蓝色大肥鱼**（DeepSeek 鲸鱼娘）。
+以及一个**真正的 3D 骨骼角色**——蓝色大肥鱼。
 
 ![预览](docs/preview.png)
 
-![斜视角下的立体厚度](docs/preview-3d.png)
+![灵动岛展开态](docs/preview-dynamic-island.png)
 
 ---
 
-## 关于角色的 3D 化
+## 角色：真 3D 骨骼模型
 
-社区里「大肥鱼」只有 2D 立绘、动画和表情包，**不存在可用的 3D 模型**
-（我搜遍了 GitHub，没有任何 `.vrm / .glb / .pmx` 版本）。
+角色躯干使用 VRoid 官方示例模型 `AvatarSample_A`（VRM 0.x，25.5 MB，95 节点 / 54 根标准人形骨骼），
+由 `@pixiv/three-vrm` 解析，`three.js` 渲染。
 
-所以这里没有用贴片广告牌，而是把立绘**充气成真正的三维实体**：
+因为社区里「大肥鱼」只有 2D 立绘与动画，没有 3D 模型，这里采用「可用的真 3D 躯体 + 大肥鱼化处理」的路线：
 
-1. 读取立绘的 alpha 通道，做多次箱式模糊，得到一张高度场
-2. 用高度场沿 Z 轴位移一张 132×176 细分的高密度网格，得到起伏的正面
-3. 镜像一份作为背面，形成有厚度的实体
-4. 再叠一层共用同一 alpha 遮罩的背面壳做描边
+| 处理 | 做法 |
+|---|---|
+| 染发 | 把 HAIR 材质基色替换为鲸鱼蓝 |
+| 眼睛 | 虹膜材质改为亮蓝 |
+| 材质 | MToon → `MeshStandardMaterial`，解决面部发黑并统一光照 |
+| 描边 | 保留 inverted-hull 描边壳，改为半透明深蓝 |
+| 姿势 | 通过 VRM 归一化骨骼把 T-pose 摆成自然垂手站姿 |
 
-结果：**正面是原画质感，侧面有真实厚度与曲面光影**，可以绕着看，能被场景灯光照亮。
-不是把图片贴在平面上，而是图片驱动生成的几何体。
+**骨骼驱动**：呼吸（胸腔起伏）、站立微摆、看向鼠标（脖子+头）、随机眨眼（expression `blink`）、
+点击时跳跃与点头。
+
+> 注意：这不是「大肥鱼」原角色的官方 3D 化，而是一个真 3D 动漫角色的风格化替代。
+> 若日后出现大肥鱼本人的 VRM 模型，把 `public/models/avatar.vrm` 替换掉即可，加载与驱动逻辑不用改。
 
 ---
 
@@ -38,7 +44,7 @@
 - **拖拽旋转 / 滚轮缩放 / 右键平移**（OrbitControls + 阻尼）
 - **WASD** 水平漫游、**Q/E** 升降、**R** 切换自动旋转
 - 悬停图标：抬升、放大、描边增亮，灵动岛同步显示应用名
-- 点击图标：打开玻璃面板；点击大肥鱼：随机动作 + 台词
+- 点击图标：打开玻璃面板；点击角色：随机反应 + 台词
 
 ### 灵动岛
 四种形态平滑形变（宽度、高度、圆角同步过渡）：
@@ -53,11 +59,9 @@
 ### 陪伴系统
 - **对话气泡**：跟随角色头顶投影定位，台词取自社区 persona 设定
   （自称「人家」、爱撒娇、爱吃白饭 = 算力）
-- **投喂白饭**：点击按钮或按 `F`，算力 +18、好感 +6，冒爱心
+- **投喂白饭**：点击按钮或按 `F`，算力 +18、好感 +6
 - **算力消耗**：随时间缓慢下降；低于阈值会慌张并要求投喂
 - **主动搭话**：空闲 20～36 秒随机说一句话
-
-角色本身还有呼吸浮动、左右摇摆、点击跳跃与旋转余韵等程序化动画。
 
 ---
 
@@ -80,7 +84,17 @@ npm run preview    # http://127.0.0.1:5274
 ```
 /?demo=1   # 展开音乐面板 + 灵动岛
 /?demo=2   # 角色 + 对话气泡
-/?demo=3   # 斜视角，观察角色的立体厚度
+/?demo=3   # 斜视角
+/?demo=4   # 角色特写
+```
+
+### 截图工具
+
+`tools/shot.mjs` 用 Puppeteer 做「等待条件成立再截图」，避免 `--virtual-time-budget`
+在异步加载（VRM 25 MB）完成前就截断：
+
+```bash
+node tools/shot.mjs "http://127.0.0.1:5274/" out.png "window.__FISH_READY__ === true" 120000 1600 900
 ```
 
 ---
@@ -106,10 +120,11 @@ npm run preview    # http://127.0.0.1:5274
 |---|---|
 | 构建 | Vite 6 |
 | 3D | Three.js r180 |
-| 角色 | alpha 高度场位移网格（程序化生成几何） |
+| 角色 | VRM 0.x + `@pixiv/three-vrm` 3.5 |
 | 后处理 | EffectComposer + UnrealBloomPass + OutputPass |
 | 环境光照 | RoomEnvironment + PMREMGenerator |
 | UI | 原生 DOM + CSS（玻璃拟态、`backdrop-filter`） |
+| 截图 | puppeteer-core |
 
 无前端框架，全部为原生 ES Module。
 
@@ -127,17 +142,19 @@ npm run preview    # http://127.0.0.1:5274
 
 ## 素材来源与许可
 
-角色立绘（`public/character/front.png`）来自社区开源桌宠项目：
+### 角色模型
 
-- **项目**：[1190fasheqi/dafeiyu-pet](https://github.com/1190fasheqi/dafeiyu-pet)（MIT License）
-- 完整许可文本见 `public/character/LICENSE-dafeiyu-pet.txt`
+- **模型**：`AvatarSample_A.vrm`，作者 **VRoid Project (pixiv Inc.)**
+- **来源**：VRoid 官方示例模型，经 [moeru-ai/airi](https://github.com/moeru-ai/airi) 的公开分发地址获取
+- **许可**：遵循 VRoid 示例模型的使用条款；本项目仅作技术演示，未用于商业用途
 
-本项目仅将该立绘用于生成几何高度场与贴图，未做二次绘制。
-立绘著作权归原作者及原社区所有；若原作者有异议，请提 Issue，会立即移除。
+模型经过程序化改造（发色、瞳色、材质替换、骨骼摆姿），原始模型版权归原作者所有。
 
-联动台词风格参考：`MerZlin/dsh-pet-indesktop` 的 `persona_presets/whale_maid.json`。
+### 台词与设定参考
 
-场景、图标阵列、灵动岛、3D 充气算法与全部代码均为本项目原创。
+- [MerZlin/dsh-pet-indesktop](https://github.com/MerZlin/dsh-pet-indesktop)（MIT）的 `persona_presets/whale_maid.json`
+
+场景、图标阵列、灵动岛、交互系统、材质转换与全部代码均为本项目原创。
 
 ---
 
@@ -146,10 +163,11 @@ npm run preview    # http://127.0.0.1:5274
 ```
 .
 ├── index.html            # 入口与全部 DOM 结构
-├── public/character      # 角色立绘（来源见上）
+├── public/models         # VRM 角色模型
+├── tools/shot.mjs        # Puppeteer 截图工具
 ├── src
 │   ├── main.js           # 场景、灯光、图标、相机控制、主循环
-│   ├── mascot.js         # 角色：alpha 高度场 → 3D 充气几何体
+│   ├── mascot.js         # VRM 加载、材质转换、骨骼动画
 │   ├── interaction.js    # 对话气泡 / 投喂 / 算力 / 主动搭话
 │   ├── island.js         # 灵动岛状态机
 │   ├── panels.js         # 应用定义与面板渲染
