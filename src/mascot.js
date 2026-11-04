@@ -19,6 +19,8 @@ export function createMascot(scene, camera) {
   scene.add(root);
 
   const state = {
+    holding: 0,
+    holdingTarget: 0,
     baseY: FEET_Y,
     jump: 0,
     spin: 0,
@@ -280,9 +282,21 @@ export function createMascot(scene, camera) {
       b.head.rotation.x = -state.pointerY * 0.12;
     }
 
-    // 手臂微摆
+    // 手臂：待机微摆，拿手机时抬起右前臂
+    state.holding += (state.holdingTarget - state.holding) * Math.min(1, dt * 3);
+    const hold = state.holding;
+
     if (b.leftUpperArm) b.leftUpperArm.rotation.z = 1.16 + Math.sin(t * 1.3) * 0.03;
-    if (b.rightUpperArm) b.rightUpperArm.rotation.z = -1.16 - Math.sin(t * 1.3) * 0.03;
+    if (b.rightUpperArm) {
+      b.rightUpperArm.rotation.z = -1.16 + hold * 0.22 - Math.sin(t * 1.3) * 0.03;
+    }
+    if (b.rightLowerArm) {
+      b.rightLowerArm.rotation.x = -hold * 1.25;
+      b.rightLowerArm.rotation.y = 0.18 + hold * 0.5;
+    }
+    if (b.head && hold > 0.01) {
+      b.head.rotation.x += hold * 0.13;
+    }
 
     // 点头动作衰减
     if (nodPhase > 0.001) {
@@ -320,6 +334,7 @@ export function createMascot(scene, camera) {
     origUpdate(t, dt);
   };
 
+  api.setHolding = (v) => { state.holdingTarget = v; };
   api.react = react;
   api.play = play;
   api.start = () => play('idle');

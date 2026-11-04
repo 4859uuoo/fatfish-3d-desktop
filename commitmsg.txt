@@ -1,10 +1,8 @@
-feat: 改用真正的 3D 骨骼角色（VRM）
+feat: 角色自主生活系统（刷抖音 / 微信 / QQ / 上网）
 
-- 接入 VRoid AvatarSample_A.vrm（VRM 0.x，54 根人形骨骼）
-- @pixiv/three-vrm 解析，修复此前 headless 下「卡在 99%」的误判
-- MToon 材质统一转为 MeshStandardMaterial，解决面部发黑
-- 骨骼驱动：呼吸、站立微摆、看向鼠标、随机眨眼、点击跳跃点头
-- 归一化骨骼把 T-pose 摆成自然垂手姿势
-- 发色/瞳色替换为鲸鱼蓝
-- 新增 tools/shot.mjs：Puppeteer 等待加载完成再截图
-- 移除 2D 立绘与充气几何体方案
+- 新增 src/life.js：加权状态机驱动角色自主切换活动
+- 全息屏：CanvasTexture 实时渲染抖音信息流、微信/QQ 聊天列表、模拟浏览器
+- 骨骼联动：进入用屏活动时抬起右前臂、头部微低
+- 台词与灵动岛副标题随活动同步
+- 活动含权重与随机时长，避免连续重复
+- README 补充真实社交接入方案（NapCat/AstrBot）与边界说明

@@ -11,6 +11,7 @@ import { createMascot } from './mascot.js';
 import { Island } from './island.js';
 import { APPS, initPanel, openPanel, closePanel } from './panels.js';
 import { initInteraction } from './interaction.js';
+import { createLife } from './life.js';
 
 /* ============================================================
    基础环境
@@ -434,6 +435,14 @@ fish.start();
 
 const interaction = initInteraction({ island, fish, camera, renderer });
 
+const life = createLife({
+  scene,
+  mascot: fish,
+  island,
+  camera,
+  say: (text, ms) => interaction.say(text, ms),
+});
+
 /* ============================================================
    交互：射线拾取
    ============================================================ */
@@ -647,6 +656,7 @@ function animate() {
 
   island.tick();
   interaction.update(dt);
+  life.update(dt, t);
 }
 
 /* ============================================================
